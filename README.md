@@ -22,17 +22,13 @@ com.zoreal:oauth2 (this library)   your backend: exchange, verify, userinfo
 <dependency>
   <groupId>com.zoreal</groupId>
   <artifactId>oauth2</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.2</version>
 </dependency>
 ```
 
-Until the artifact is on Maven Central, build it into your local repository
-from source:
-
-```sh
-git clone https://github.com/Bynn-Intelligence/zoreal-oauth2-java
-cd zoreal-oauth2-java && ./mvnw install
-```
+The version above tracks this commit; the newest is always on the
+[releases page](https://github.com/Bynn-Intelligence/zoreal-oauth2-java/releases)
+and on [Maven Central](https://central.sonatype.com/artifact/com.zoreal/oauth2).
 
 Java 17 or newer. One dependency: `com.nimbusds:nimbus-jose-jwt`.
 
