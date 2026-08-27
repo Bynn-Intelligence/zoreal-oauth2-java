@@ -1,5 +1,7 @@
 # zoreal-oauth2 for the JVM
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.zoreal/oauth2)](https://central.sonatype.com/artifact/com.zoreal/oauth2) [![CI](https://img.shields.io/github/actions/workflow/status/Bynn-Intelligence/zoreal-oauth2-java/ci.yml?branch=main&label=CI)](https://github.com/Bynn-Intelligence/zoreal-oauth2-java/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 Login with ZOREAL for JVM backends: the relying-party half of the flow that
 [`@zoreal/oauth2-react`](https://github.com/Bynn-Intelligence/zoreal-oauth2-react)
 starts in the browser.
