@@ -52,7 +52,10 @@
     <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
-      <version>9.40</version>
+      <!-- 9.40 is vulnerable to a nested-JSON denial of service
+           (CVE-2025-53864) reachable through token parsing; the fix line
+           for the 9.38+ range is 10.0.2 and later. -->
+      <version>10.3</version>
     </dependency>
 
     <dependency>
