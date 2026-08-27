@@ -64,7 +64,7 @@ jobs:
           git add pom.xml
           git commit -m "Release v${{ steps.bump.outputs.version }} [skip publish]"
           git tag "v${{ steps.bump.outputs.version }}"
-          git push origin HEAD:main --follow-tags
+          git push origin HEAD:main "v${{ steps.bump.outputs.version }}"
 
       - run: mvn -B -P release deploy -DskipTests
         env:
