@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +49,21 @@ public final class ZorealOAuth2Client {
 
     public static final String DEFAULT_ISSUER = "https://id.zoreal.com";
     public static final String VERSION = "0.1.0";
+
+    /**
+     * The assurance vocabulary, weakest to strongest. Verification accepts
+     * equal or stronger: an RP requiring {@code zoreal.device} is satisfied
+     * by a {@code zoreal.live} token, never the reverse.
+     */
+    public static final Map<String, Integer> ACR_ORDER;
+
+    static {
+        Map<String, Integer> order = new LinkedHashMap<>();
+        order.put("zoreal.session", 0);
+        order.put("zoreal.device", 1);
+        order.put("zoreal.live", 2);
+        ACR_ORDER = Collections.unmodifiableMap(order);
+    }
 
     private static final String USER_AGENT = "zoreal-oauth2-java/" + VERSION;
 
@@ -113,8 +129,23 @@ public final class ZorealOAuth2Client {
      * cannot tell a substituted ID token from the real one.
      */
     public Login authenticate(String code, String codeVerifier, String nonce) {
+        return authenticate(code, codeVerifier, nonce, null);
+    }
+
+    /**
+     * As {@link #authenticate(String, String, String)}, and — when
+     * {@code requiredAcr} is given — refuses a token whose assurance is
+     * below it ({@code zoreal.session < zoreal.device < zoreal.live}).
+     *
+     * <p>REQUESTING an assurance on the wire (the SDK's {@code acr_values})
+     * is advisory; the signed {@code acr} claim is the proof, and this
+     * parameter is where a relying party that asked for a liveness check
+     * verifies it actually happened. An RP that requires {@code zoreal.live}
+     * and never passes it here has checked nothing.
+     */
+    public Login authenticate(String code, String codeVerifier, String nonce, String requiredAcr) {
         TokenResponse tokens = exchange(code, codeVerifier);
-        Map<String, Object> claims = verifyIdToken(tokens.idToken(), nonce);
+        Map<String, Object> claims = verifyIdToken(tokens.idToken(), nonce, requiredAcr);
         return new Login(this, claims, tokens.idToken(), tokens.accessToken(), tokens.scope());
     }
 
@@ -195,6 +226,20 @@ public final class ZorealOAuth2Client {
      * algorithm is how algorithm confusion starts.
      */
     public Map<String, Object> verifyIdToken(String idToken, String nonce) {
+        return verifyIdToken(idToken, nonce, null);
+    }
+
+    /**
+     * As {@link #verifyIdToken(String, String)}, and — when
+     * {@code requiredAcr} is given — checks the assurance floor: the token's
+     * {@code acr} claim must be a known value of equal or stronger rank
+     * ({@code zoreal.session < zoreal.device < zoreal.live}). A token whose
+     * {@code acr} is weaker, missing, or outside the vocabulary is refused
+     * with a {@link VerificationException}; an unknown REQUIRED value throws
+     * {@link ConfigurationException}, because that is a typo in the caller's
+     * code, not a bad token.
+     */
+    public Map<String, Object> verifyIdToken(String idToken, String nonce, String requiredAcr) {
         if (isBlank(idToken)) {
             throw new VerificationException("an ID token is required");
         }
@@ -234,8 +279,30 @@ public final class ZorealOAuth2Client {
         if (!isBlank(nonce) && !nonce.equals(claims.getClaim("nonce"))) {
             throw new VerificationException("the ID token nonce is not the one this login started with");
         }
+        if (!isBlank(requiredAcr)) {
+            verifyAcr(claims.getClaim("acr"), requiredAcr);
+        }
 
         return jwt.getPayload().toJSONObject();
+    }
+
+    /**
+     * Equal or stronger satisfies; anything else — weaker, missing, or a
+     * value outside the vocabulary — is refused. An unknown REQUIREMENT is a
+     * caller bug and says so plainly rather than failing every login.
+     */
+    private static void verifyAcr(Object actual, String required) {
+        Integer requiredRank = ACR_ORDER.get(required);
+        if (requiredRank == null) {
+            throw new ConfigurationException("unknown required acr " + required
+                    + "; supported: " + String.join(", ", ACR_ORDER.keySet()));
+        }
+        Integer actualRank = actual instanceof String s ? ACR_ORDER.get(s) : null;
+        if (actualRank == null || actualRank < requiredRank) {
+            String said = actual instanceof String s ? "\"" + s + "\"" : "nothing";
+            throw new VerificationException(
+                    "the ID token says acr " + said + ", below the required " + required);
+        }
     }
 
     /**

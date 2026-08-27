@@ -73,6 +73,27 @@ public final class Login {
         return (String) claims.get("acr");
     }
 
+    /**
+     * A fresh liveness capture backed this login. The convenience spelling
+     * of {@code acr().equals("zoreal.live")}; for enforcement, pass a
+     * required acr to {@code authenticate} and let verification refuse the
+     * token instead of checking after.
+     */
+    public boolean live() {
+        return "zoreal.live".equals(acr());
+    }
+
+    /**
+     * Equal or stronger satisfies, on the client's ordering
+     * ({@code zoreal.session < zoreal.device < zoreal.live}). Unknown
+     * values satisfy nothing.
+     */
+    public boolean satisfiesAcr(String required) {
+        Integer actual = ZorealOAuth2Client.ACR_ORDER.get(acr());
+        Integer wanted = ZorealOAuth2Client.ACR_ORDER.get(required);
+        return actual != null && wanted != null && actual >= wanted;
+    }
+
     /** The authentication methods, e.g. {@code ["hwk", "face", "user"]}. */
     @SuppressWarnings("unchecked")
     public List<String> amr() {
